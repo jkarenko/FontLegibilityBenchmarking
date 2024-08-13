@@ -27,6 +27,12 @@ def random_text(length=3):
     return selected_sentence
 
 
+def draw_checkmark(image, x, y, size=20):
+    draw = ImageDraw.Draw(image)
+    draw.line((x, y + size // 2, x + size // 3, y + size), fill="green", width=6)
+    draw.line((x + size // 3, y + size, x + size, y), fill="green", width=6)
+
+
 def generate_image():
     global image, image_container, current_text, frozen_text, frozen_blur_levels, slider
     draw = ImageDraw.Draw(image)
@@ -46,11 +52,16 @@ def generate_image():
         # Create a temporary image for this text
         temp_image = Image.new("RGB", (image_width, 50), color="white")
         temp_draw = ImageDraw.Draw(temp_image)
+
         temp_draw.text((200, 20), text, font=font, fill="black")
 
         # Apply individual blur if frozen, otherwise use global blur
         blur_value = frozen_blur_levels.get(index, slider.get())
         blurred_temp = temp_image.filter(ImageFilter.GaussianBlur(radius=blur_value))
+
+        # Add checkmark if text is frozen
+        if index in frozen_text:
+            draw_checkmark(blurred_temp, 170, 15)
 
         # Paste the blurred text onto the main image
         image.paste(blurred_temp, (0, y_position))
@@ -75,11 +86,16 @@ def reveal_font(event):
         if index not in frozen_text:  # Only freeze if not already frozen
             frozen_text[index] = current_text[index]
             frozen_blur_levels[index] = slider.get()  # Freeze the current blur level
-        else:
-            # If already frozen, unfreeze
-            frozen_text.pop(index, None)
-            frozen_blur_levels.pop(index, None)
-        generate_image()
+            update_frozen_info()
+            generate_image()
+
+
+def update_frozen_info():
+    frozen_info.delete(1.0, tk.END)  # Clear previous content
+    for index, text in frozen_text.items():
+        font_name = fonts[index].split('/')[-1].split('.')[0]  # Extract font name from path
+        blur_level = frozen_blur_levels[index]
+        frozen_info.insert(tk.END, f"Font: {font_name}, Blur: {blur_level:.1f}\n")
 
 
 def keypress(event):
@@ -117,7 +133,11 @@ frozen_blur_levels = {}
 
 slider = tk.Scale(root, resolution=0.1, from_=0.0, to=5.0, orient="horizontal", label="Blur", command=update_blur)
 slider.set(5.0)
-slider.pack(pady=(0, 20))
+slider.pack(pady=(0, 10))
+
+# Add a text widget to display frozen text information
+frozen_info = tk.Text(root, height=5, width=40)
+frozen_info.pack(pady=(0, 10))
 
 generate_image()
 
