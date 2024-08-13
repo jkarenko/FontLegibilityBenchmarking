@@ -170,7 +170,7 @@ collected_fonts_text.pack(pady=(0, 10))
 reset_button = tk.Button(root, text="Reset Collection", command=reset_all)
 reset_button.pack(pady=(0, 10))
 
-fonts = get_font_files('/Library/Fonts/')
+fonts = get_font_files('/System/Library/Fonts/')
 current_font = random.choice(fonts)
 
 sentences = load_text()
