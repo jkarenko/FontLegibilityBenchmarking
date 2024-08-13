@@ -43,6 +43,7 @@ def get_next_word():
         current_sentence = random.choice(sentences)
         current_word_index = 0
     word = current_sentence[current_word_index]
+    word = word.strip("\"“”")
     current_word_index += 1
     return word
 
