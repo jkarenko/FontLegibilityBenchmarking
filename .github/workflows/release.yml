@@ -9,6 +9,8 @@ jobs:
   build-and-release:
     name: Build and Release
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
@@ -117,7 +119,7 @@ jobs:
       run: |
         mv dist\FontLegibilityBenchmark.exe ${{ matrix.OUTPUT_NAME }}
 
-    - name: Create Release
+    - name: Create Release and Upload Asset
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
@@ -126,13 +128,3 @@ jobs:
           --notes "Release ${{ github.ref_name }}" \
           ${{ matrix.OUTPUT_NAME }}
       shell: bash
-
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./${{ matrix.OUTPUT_NAME }}
-        asset_name: ${{ matrix.OUTPUT_NAME }}
-        asset_content_type: application/octet-stream
