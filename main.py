@@ -7,6 +7,7 @@ import unicodedata
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageTk
+from numpy.f2py.crackfortran import previous_context
 
 text_cache = None
 collected_fonts = []
@@ -35,11 +36,9 @@ def get_next_word():
     return word
 
 
-def test_font(font_path, size=10):
-    print(f"Testing font: {font_path}")
-
+def test_font(font_path, size=30):
     # Create a new image
-    img = Image.new('RGB', (size, size), color='white')
+    img = Image.new('RGB', (size * 3, size), color='white')
     draw = ImageDraw.Draw(img)
 
     try:
@@ -49,9 +48,10 @@ def test_font(font_path, size=10):
         print(f"Could not load font: {font_path}")
         return False
 
-    # Test with a more complex Unicode character
-    test_char = "あ"  # Japanese Hiragana 'a'
-    draw.text((0, 0), test_char, font=font, fill='black')
+    # Test with multiple characters
+    test_chars = "AÖ1"  # Basic Latin, Hiragana, Latin-1 Supplement
+    for i, char in enumerate(test_chars):
+        draw.text((i * size, 0), char, font=font, fill='black')
 
     # Convert image to numpy array
     img_array = np.array(img)
@@ -61,18 +61,45 @@ def test_font(font_path, size=10):
         print(f"Font {font_path} failed: nothing was drawn")
         return False
 
-    print(f"Font {font_path} passed the test")
+    # Check for uniform rectangles or question mark patterns
+    first_slice = None
+    for i in range(3):
+        char_slice = img_array[:, i * size:(i + 1) * size]
+        if first_slice is None:
+            first_slice = char_slice
+
+        # Check for uniform rectangles
+        if np.all(char_slice == char_slice[0, 0]):
+            print(f"Font {font_path} failed: uniform rectangle detected")
+            return False
+
+        # Check for question mark pattern (simplified)
+        if np.sum(char_slice < 255) < 0.1 * size * size:
+            print(f"Font {font_path} failed: possible question mark or minimal glyph detected")
+            return False
+
+        # Check if the slices are too similar
+        if i > 0:
+            if np.all(char_slice == first_slice):
+                print(f"Font {font_path} failed: too similar characters detected")
+                return False
+
+    # Check for diversity in pixel values
+    if len(np.unique(img_array)) < 10:
+        print(f"Font {font_path} failed: not enough pixel value diversity")
+        return False
+
     return True
 
 
 def get_font_files(directory):
-    print(f"Searching for fonts in: {directory}")  # Debug print
+    print(f"Searching for fonts in: {directory}")
     font_extensions = ('.ttf', '.otf', '.ttc')
     all_fonts = [os.path.join(directory, f) for f in os.listdir(directory)
                  if f.lower().endswith(font_extensions)]
-    print(f"Total fonts found: {len(all_fonts)}")  # Debug print
+    print(f"Total fonts found: {len(all_fonts)}")
     working_fonts = [font for font in all_fonts if test_font(font)]
-    print(f"Working fonts: {len(working_fonts)}")  # Debug print
+    print(f"Working fonts: {len(working_fonts)}")
     return working_fonts
 
 
