@@ -82,6 +82,13 @@ def reveal_font(event):
         generate_image()
 
 
+def keypress(event):
+    if event.keysym == 'Left':
+        slider.set(slider.get() - 0.1)
+    elif event.keysym == 'Right':
+        slider.set(slider.get() + 0.1)
+
+
 fonts = [
     "/Library/Fonts/Arial.ttf",
     "/Library/Fonts/Helvetica.ttc",
@@ -92,6 +99,8 @@ fonts = [
 
 root = tk.Tk()
 root.title("Font Legibility Evaluation")
+root.bind("<Left>", keypress)
+root.bind("<Right>", keypress)
 
 image_width = root.winfo_screenwidth()
 image_height = len(fonts) * 100 + 20
@@ -107,8 +116,8 @@ frozen_text = {}
 frozen_blur_levels = {}
 
 slider = tk.Scale(root, resolution=0.1, from_=0.0, to=5.0, orient="horizontal", label="Blur", command=update_blur)
-slider.set(10.0)
-slider.pack(pady=(0, 10))
+slider.set(5.0)
+slider.pack(pady=(0, 20))
 
 generate_image()
 
