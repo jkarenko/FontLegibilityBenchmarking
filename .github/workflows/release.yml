@@ -91,16 +91,17 @@ jobs:
       shell: bash
 
     - name: Create .desktop file for Linux
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        cat > FontLegibilityBenchmark.desktop << EOL
-        [Desktop Entry]
-        Type=Application
-        Name=Font Legibility Benchmark
-        Exec=FontLegibilityBenchmark
-        Icon=FontLegibilityBenchmark
-        Categories=Utility;
-        EOL
+          if: matrix.os == 'ubuntu-latest'
+          run: |
+            cat > FontLegibilityBenchmark.desktop << EOL
+            [Desktop Entry]
+            Type=Application
+            Name=Font Legibility Benchmark
+            Exec=FontLegibilityBenchmark
+            Icon=FontLegibilityBenchmark
+            Categories=Utility;
+            EOL
+          shell: bash
 
     - name: Build with PyInstaller
       run: |
@@ -120,7 +121,7 @@ jobs:
         mv dist/FontLegibilityBenchmark.app dist/dmg/
         hdiutil create -volname "Font Legibility Benchmark" -srcfolder dist/dmg -ov -format UDZO ${{ matrix.OUTPUT_NAME }}
 
-    - name: Package for Linux
+- name: Package for Linux
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get install -y fuse
@@ -130,9 +131,12 @@ jobs:
         mkdir -p FontLegibilityBenchmark.AppDir/usr/share/applications
         mkdir -p FontLegibilityBenchmark.AppDir/usr/share/icons/hicolor/256x256/apps
         cp dist/FontLegibilityBenchmark FontLegibilityBenchmark.AppDir/usr/bin/
+        cp FontLegibilityBenchmark.desktop FontLegibilityBenchmark.AppDir/
         cp FontLegibilityBenchmark.desktop FontLegibilityBenchmark.AppDir/usr/share/applications/
         cp FontLegibilityBenchmark.png FontLegibilityBenchmark.AppDir/usr/share/icons/hicolor/256x256/apps/
+        cp FontLegibilityBenchmark.png FontLegibilityBenchmark.AppDir/
         ./appimagetool-x86_64.AppImage FontLegibilityBenchmark.AppDir ${{ matrix.OUTPUT_NAME }}
+      shell: bash
 
     - name: Package for Windows
       if: matrix.os == 'windows-latest'
