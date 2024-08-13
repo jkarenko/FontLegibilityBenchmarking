@@ -1,23 +1,19 @@
 import random
 import string
 import tkinter as tk
-
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageTk
 
 
 def update_blur(value):
-    global frozen_font_index, current_text, frozen_text, frozen_blur_levels
-    blurred_image = image.filter(ImageFilter.GaussianBlur(radius=int(value)))
-    tk_image = ImageTk.PhotoImage(blurred_image)
-    canvas.itemconfig(image_container, image=tk_image)
-    canvas.image = tk_image
+    global current_text, frozen_text, frozen_blur_levels
+    generate_image()
 
 
 def decrease_blur():
     current_value = slider.get()
     if current_value > 0:
         slider.set(current_value - 1)
-        update_blur(current_value - 1)
+        generate_image()
 
 
 def random_text(length=16):
@@ -35,20 +31,28 @@ def generate_image():
     for index, font_path in enumerate(fonts):
         try:
             font = ImageFont.truetype(font_path, 40)
-            text = frozen_text.get(index, random_text())  # Use frozen text if available, otherwise random
-            current_text[index] = text
-            draw.text((10, y_position), text, font=font, fill="black")
         except IOError:
             print(f"Font not found: {font_path}")
-            default_font = ImageFont.load_default()
-            text = frozen_text.get(index, random_text())  # Use frozen text if available, otherwise random
-            current_text[index] = text
-            draw.text((10, y_position), text, font=default_font, fill="black")
+            font = ImageFont.load_default()
+
+        text = frozen_text.get(index, random_text())
+        current_text[index] = text
+
+        # Create a temporary image for this text
+        temp_image = Image.new("RGB", (image_width, 50), color="white")
+        temp_draw = ImageDraw.Draw(temp_image)
+        temp_draw.text((10, 0), text, font=font, fill="black")
+
+        # Apply individual blur if frozen, otherwise use global blur
+        blur_value = frozen_blur_levels.get(index, slider.get())
+        blurred_temp = temp_image.filter(ImageFilter.GaussianBlur(radius=blur_value))
+
+        # Paste the blurred text onto the main image
+        image.paste(blurred_temp, (0, y_position))
+
         y_position += 50
 
-    blur_value = slider.get()
-    blurred_image = image.filter(ImageFilter.GaussianBlur(radius=blur_value))
-    tk_image = ImageTk.PhotoImage(blurred_image)
+    tk_image = ImageTk.PhotoImage(image)
 
     if image_container is None:
         image_container = canvas.create_image(0, 0, anchor="nw", image=tk_image)
@@ -59,13 +63,17 @@ def generate_image():
 
 
 def reveal_font(event):
-    global frozen_font_index, current_text, frozen_text, frozen_blur_levels
+    global current_text, frozen_text, frozen_blur_levels
     y_click = event.y
     index = y_click // 50
     if 0 <= index < len(fonts):
         if index not in frozen_text:  # Only freeze if not already frozen
-            frozen_text[index] = current_text[index]  # You should store the actual text here that was drawn
+            frozen_text[index] = current_text[index]
             frozen_blur_levels[index] = slider.get()  # Freeze the current blur level
+        else:
+            # If already frozen, unfreeze
+            frozen_text.pop(index, None)
+            frozen_blur_levels.pop(index, None)
         generate_image()
 
 
@@ -92,7 +100,6 @@ canvas.bind("<Button-1>", reveal_font)
 
 # Initialize variables
 image_container = None
-frozen_font_index = None
 current_text = {}
 frozen_text = {}
 frozen_blur_levels = {}
