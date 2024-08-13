@@ -231,6 +231,8 @@ slider = tk.Scale(root, resolution=0.1, from_=0.0, to=max_blur, orient="horizont
 slider.set(max_blur)
 slider.pack(pady=(10, 10))
 
+tk.Label(root, text="Press spacebar to mark as legible").pack(pady=(0, 10))
+
 # Add a text widget to display collected fonts
 collected_fonts_text = tk.Text(root, height=10, width=60)
 collected_fonts_text.pack(pady=(0, 10))

@@ -8,9 +8,12 @@ It's also a game.
 
 Perhaps mostly a game.
 
+![img_1.png](img_1.png)
+
 ## Features
 
-Program rapidly throws decreasibly blurred words at you. When you think you are able to read the words comfortably, hit spacebar to save the font name and blur level in your session's ranking.
+- Rapidly throws decreasibly blurred words at you. When you think you are able to read the words comfortably, hit spacebar to save the font name and blur level in your session's ranking.
+- Finds fonts in your system's font directory and loads them for testing.
 
 ## Installation
 
