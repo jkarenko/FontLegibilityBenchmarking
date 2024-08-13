@@ -3,15 +3,13 @@ import random
 import re
 import time
 import tkinter as tk
-from tkinter import ttk
 
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageTk
 
 text_cache = None
-current_font_index = 0
-font_history = []
 collected_fonts = []
 last_update_time = 0
+
 
 def random_text(length=3):
     global text_cache
@@ -24,24 +22,26 @@ def random_text(length=3):
     sentences = [sentence for sentence in sentences if len(sentence.split()) >= length]
     return random.choice(sentences).strip()
 
+
 def get_font_files(directory):
     font_extensions = ('.ttf', '.otf', '.ttc')
     return [os.path.join(directory, f) for f in os.listdir(directory)
             if f.lower().endswith(font_extensions)]
 
-def update_font():
-    global current_font_index, font_history, last_update_time
+
+def update_blur():
+    global last_update_time
     current_time = time.time()
 
     if current_time - last_update_time >= 1:
-        current_font_index = (current_font_index + 1) % len(fonts)
-        font_history.append(fonts[current_font_index])
-        if len(font_history) > 10:  # Keep only the last 10 fonts
-            font_history.pop(0)
+        current_blur = slider.get()
+        if current_blur > 0:
+            slider.set(current_blur - 0.1)
         last_update_time = current_time
 
     generate_image()
-    root.after(100, update_font)  # Schedule the next update
+    root.after(100, update_blur)  # Schedule the next update
+
 
 def generate_image():
     global image, image_container, current_text
@@ -50,11 +50,10 @@ def generate_image():
     draw = ImageDraw.Draw(image)
     blur_value = slider.get()
 
-    font_path = fonts[current_font_index]
     try:
-        font = ImageFont.truetype(font_path, 30)
+        font = ImageFont.truetype(current_font, 30)
     except IOError:
-        print(f"Font not found: {font_path}")
+        print(f"Font not found: {current_font}")
         font = ImageFont.load_default()
 
     current_text = random_text()
@@ -67,8 +66,11 @@ def generate_image():
     image.paste(blurred_text, (20, image_height // 2 - 30))
 
     # Display the current font name
-    font_name = os.path.basename(font_path).split('.')[0]
+    font_name = os.path.basename(current_font).split('.')[0]
     draw.text((20, 20), f"Current Font: {font_name}", font=ImageFont.truetype(fonts[0], 16), fill="blue")
+
+    # Display current blur level
+    draw.text((20, 50), f"Current Blur: {blur_value:.1f}", font=ImageFont.truetype(fonts[0], 16), fill="red")
 
     tk_image = ImageTk.PhotoImage(image)
 
@@ -79,21 +81,31 @@ def generate_image():
 
     canvas.image = tk_image  # Keep reference to avoid GC
 
-def collect_font(event=None):
-    global collected_fonts
-    current_font = fonts[current_font_index]
+
+def collect_font_and_reset():
+    global current_font, collected_fonts
     current_blur = slider.get()
     collected_fonts.append((current_font, current_blur))
     update_collected_fonts_display()
 
+    # Reset blur to 5.0 and select a new random font
+    slider.set(5.0)
+    current_font = random.choice(fonts)
+    generate_image()
+
+
 def update_collected_fonts_display():
     collected_fonts_text.delete('1.0', tk.END)
-    for i, (font, blur) in enumerate(collected_fonts, 1):
+    # Sort collected fonts by blur value in descending order
+    sorted_fonts = sorted(collected_fonts, key=lambda x: x[1], reverse=True)
+    for i, (font, blur) in enumerate(sorted_fonts, 1):
         font_name = os.path.basename(font).split('.')[0]
         collected_fonts_text.insert(tk.END, f"{i}. Font: {font_name}, Blur: {blur:.1f}\n")
 
-def update_blur(event=None):
+
+def update_blur_manually(event=None):
     generate_image()
+
 
 def keypress(event):
     if event.keysym == 'Left':
@@ -101,14 +113,17 @@ def keypress(event):
     elif event.keysym == 'Right':
         slider.set(slider.get() + 0.1)
     elif event.keysym == 'space':
-        collect_font()
+        collect_font_and_reset()
+
 
 def reset_all():
-    global collected_fonts
+    global collected_fonts, current_font
     collected_fonts = []
     slider.set(5.0)
+    current_font = random.choice(fonts)
     update_collected_fonts_display()
     generate_image()
+
 
 root = tk.Tk()
 root.title("Font Legibility Evaluation")
@@ -127,8 +142,8 @@ image_container = None
 current_text = ""
 
 slider = tk.Scale(root, resolution=0.1, from_=0.0, to=5.0, orient="horizontal",
-                  label="Adjust blur with ← →, collect font with ␣",
-                  length=400, command=update_blur)
+                  label="Blur level (automatically decreases, adjust with ← →)",
+                  length=400, command=update_blur_manually)
 slider.set(5.0)
 slider.pack(pady=(10, 10))
 
@@ -140,8 +155,8 @@ reset_button = tk.Button(root, text="Reset Collection", command=reset_all)
 reset_button.pack(pady=(0, 10))
 
 fonts = get_font_files('/Library/Fonts/')
-random.shuffle(fonts)
+current_font = random.choice(fonts)
 
-update_font()
+update_blur()
 
 root.mainloop()
