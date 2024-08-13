@@ -3,7 +3,9 @@ import random
 import re
 import time
 import tkinter as tk
+import unicodedata
 
+import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageTk
 
 text_cache = None
@@ -17,7 +19,7 @@ max_blur = 6.0
 def load_text():
     global text_cache
     if text_cache is None:
-        with open('Pride_and_Prejudice.txt', 'r') as file:
+        with open('Pride_and_Prejudice.txt', 'r', encoding="utf-8") as file:
             text_cache = file.read()
     sentences = re.split(r'(?<=[.!?]) +', text_cache)
     return [sentence.split() for sentence in sentences if len(sentence.split()) >= 3]
@@ -33,10 +35,45 @@ def get_next_word():
     return word
 
 
+def test_font(font_path, size=10):
+    print(f"Testing font: {font_path}")
+
+    # Create a new image
+    img = Image.new('RGB', (size, size), color='white')
+    draw = ImageDraw.Draw(img)
+
+    try:
+        # Try to load the font
+        font = ImageFont.truetype(font_path, size)
+    except IOError:
+        print(f"Could not load font: {font_path}")
+        return False
+
+    # Test with a more complex Unicode character
+    test_char = "あ"  # Japanese Hiragana 'a'
+    draw.text((0, 0), test_char, font=font, fill='black')
+
+    # Convert image to numpy array
+    img_array = np.array(img)
+
+    # Check if anything was drawn
+    if np.all(img_array == 255):
+        print(f"Font {font_path} failed: nothing was drawn")
+        return False
+
+    print(f"Font {font_path} passed the test")
+    return True
+
+
 def get_font_files(directory):
+    print(f"Searching for fonts in: {directory}")  # Debug print
     font_extensions = ('.ttf', '.otf', '.ttc')
-    return [os.path.join(directory, f) for f in os.listdir(directory)
-            if f.lower().endswith(font_extensions)]
+    all_fonts = [os.path.join(directory, f) for f in os.listdir(directory)
+                 if f.lower().endswith(font_extensions)]
+    print(f"Total fonts found: {len(all_fonts)}")  # Debug print
+    working_fonts = [font for font in all_fonts if test_font(font)]
+    print(f"Working fonts: {len(working_fonts)}")  # Debug print
+    return working_fonts
 
 
 def update_blur():
@@ -61,15 +98,18 @@ def generate_image():
     blur_value = slider.get()
 
     try:
-        font = ImageFont.truetype(current_font, 40)  # Increased font size for better visibility
+        font = ImageFont.truetype(current_font, 40)
     except IOError:
         print(f"Font not found: {current_font}")
         font = ImageFont.load_default()
 
     current_word = get_next_word()
 
+    # Normalize the Unicode string
+    current_word = unicodedata.normalize('NFC', current_word)
+
     # Create a separate image for the word, blur it, then paste onto the main image
-    text_image = Image.new("RGB", (image_width, 120), color="white")  # Increased height for larger font
+    text_image = Image.new("RGB", (image_width, 120), color="white")
     text_draw = ImageDraw.Draw(text_image)
 
     left, top, right, bottom = text_draw.textbbox((0, 0), current_word, font=font)
@@ -171,7 +211,11 @@ reset_button = tk.Button(root, text="Reset Collection", command=reset_all)
 reset_button.pack(pady=(0, 10))
 
 fonts = get_font_files('/System/Library/Fonts/')
-current_font = random.choice(fonts)
+print(f"Final list of fonts: {fonts}")
+current_font = random.choice(fonts) if fonts else None
+if current_font is None:
+    print("No working fonts found!")
+    quit()
 
 sentences = load_text()
 
