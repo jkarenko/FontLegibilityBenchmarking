@@ -16,6 +16,7 @@ current_sentence = None
 current_word_index = 0
 current_word = None
 max_blur = 6.0
+auto_update_blur = False
 
 
 def resource_path(relative_path):
@@ -119,10 +120,10 @@ def get_font_files(directories):
 
 
 def update_blur():
-    global last_update_time
+    global last_update_time, auto_update_blur
     current_time = time.time()
 
-    if current_time - last_update_time >= 1:
+    if current_time - last_update_time >= 1 and auto_update_blur:
         current_blur = slider.get()
         if current_blur > 0:
             slider.set(current_blur - 0.1)
@@ -226,6 +227,12 @@ def reset_all():
     generate_image()
 
 
+def toggle_auto_update_blur():
+    global auto_update_blur
+    auto_update_blur = not auto_update_blur
+    print(f"Auto-update blur: {auto_update_blur}")
+
+
 root = tk.Tk()
 root.title("Font Legibility Evaluation")
 root.bind("<Left>", keypress)
@@ -245,6 +252,8 @@ slider = tk.Scale(root, resolution=0.1, from_=0.0, to=max_blur, orient="horizont
                   label="Blur level (automatically decreases, adjust with ← →)",
                   length=400, command=update_blur_manually)
 slider.set(max_blur)
+tk.Checkbutton(root, text="Auto-update blur", command=toggle_auto_update_blur, anchor="e").pack(pady=(0, 10),
+                                                                                                anchor="e")
 slider.pack(pady=(10, 10))
 
 tk.Label(root, text="Press spacebar to mark as legible").pack(pady=(0, 10))
