@@ -133,7 +133,7 @@ def update_blur():
 
 def generate_image():
     global image, image_container
-    image.paste("white", [0, 0, image_width, image_height])  # Clear previous text
+    image.paste("white", (0, 0, image_width, image_height))  # Clear previous text
 
     draw = ImageDraw.Draw(image)
     blur_value = slider.get()
