@@ -14,6 +14,7 @@ collected_fonts = []
 last_update_time = 0
 current_sentence = None
 current_word_index = 0
+current_word = None
 max_blur = 6.0
 
 
@@ -131,8 +132,8 @@ def update_blur():
     root.after(300, update_blur)  # Schedule the next update
 
 
-def generate_image():
-    global image, image_container
+def generate_image(change_word=True):
+    global image, image_container, current_word
     image.paste("white", (0, 0, image_width, image_height))  # Clear previous text
 
     draw = ImageDraw.Draw(image)
@@ -144,10 +145,11 @@ def generate_image():
         print(f"Font not found: {current_font}")
         font = ImageFont.load_default()
 
-    current_word = get_next_word()
+    if change_word:
+        current_word = get_next_word()
 
-    # Normalize the Unicode string
-    current_word = unicodedata.normalize('NFC', current_word)
+        # Normalize the Unicode string
+        current_word = unicodedata.normalize('NFC', current_word)
 
     # Create a separate image for the word, blur it, then paste onto the main image
     text_image = Image.new("RGB", (image_width, 120), color="white")
@@ -200,7 +202,8 @@ def update_collected_fonts_display():
 
 
 def update_blur_manually(event=None):
-    generate_image()
+    global current_word
+    generate_image(change_word=False)
 
 
 def keypress(event):
