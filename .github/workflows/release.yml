@@ -1,0 +1,138 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    name: Build and Release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+        include:
+          - os: macos-latest
+            OUTPUT_NAME: FontLegibilityBenchmark.dmg
+          - os: ubuntu-latest
+            OUTPUT_NAME: FontLegibilityBenchmark.AppImage
+          - os: windows-latest
+            OUTPUT_NAME: FontLegibilityBenchmark.exe
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller pillow numpy
+
+    - name: Install additional tools
+      run: |
+        if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+        elif [ "${{ matrix.os }}" = "macos-latest" ]; then
+          brew install imagemagick
+        elif [ "${{ matrix.os }}" = "windows-latest" ]; then
+          choco install imagemagick.app
+        fi
+      shell: bash
+
+    - name: Generate icons
+      run: |
+        if [ "${{ matrix.os }}" = "macos-latest" ]; then
+          mkdir MyIcon.iconset
+          sips -z 16 16     icon_1024x1024.png --out MyIcon.iconset/icon_16x16.png
+          sips -z 32 32     icon_1024x1024.png --out MyIcon.iconset/icon_16x16@2x.png
+          sips -z 32 32     icon_1024x1024.png --out MyIcon.iconset/icon_32x32.png
+          sips -z 64 64     icon_1024x1024.png --out MyIcon.iconset/icon_32x32@2x.png
+          sips -z 128 128   icon_1024x1024.png --out MyIcon.iconset/icon_128x128.png
+          sips -z 256 256   icon_1024x1024.png --out MyIcon.iconset/icon_128x128@2x.png
+          sips -z 256 256   icon_1024x1024.png --out MyIcon.iconset/icon_256x256.png
+          sips -z 512 512   icon_1024x1024.png --out MyIcon.iconset/icon_256x256@2x.png
+          sips -z 512 512   icon_1024x1024.png --out MyIcon.iconset/icon_512x512.png
+          cp icon_1024x1024.png MyIcon.iconset/icon_512x512@2x.png
+          iconutil -c icns MyIcon.iconset
+          mv MyIcon.icns FontLegibilityBenchmark.icns
+        elif [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+          convert icon_1024x1024.png -resize 256x256 FontLegibilityBenchmark.png
+        elif [ "${{ matrix.os }}" = "windows-latest" ]; then
+          magick convert icon_1024x1024.png -define icon:auto-resize=256,128,64,48,32,16 FontLegibilityBenchmark.ico
+        fi
+      shell: bash
+
+    - name: Create .desktop file for Linux
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cat > FontLegibilityBenchmark.desktop << EOL
+        [Desktop Entry]
+        Type=Application
+        Name=Font Legibility Benchmark
+        Exec=FontLegibilityBenchmark
+        Icon=FontLegibilityBenchmark
+        Categories=Utility;
+        EOL
+
+    - name: Build with PyInstaller
+      run: |
+        if [ "${{ matrix.os }}" = "macos-latest" ]; then
+          pyinstaller --onefile --windowed --icon=FontLegibilityBenchmark.icns --name FontLegibilityBenchmark main.py
+        elif [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+          pyinstaller --onefile --windowed --icon=FontLegibilityBenchmark.png --name FontLegibilityBenchmark --add-data "FontLegibilityBenchmark.desktop:." --add-data "FontLegibilityBenchmark.png:." main.py
+        elif [ "${{ matrix.os }}" = "windows-latest" ]; then
+          pyinstaller --onefile --windowed --icon=FontLegibilityBenchmark.ico --name FontLegibilityBenchmark main.py
+        fi
+      shell: bash
+
+    - name: Package for macOS
+      if: matrix.os == 'macos-latest'
+      run: |
+        mkdir -p dist/dmg
+        mv dist/FontLegibilityBenchmark.app dist/dmg/
+        hdiutil create -volname "Font Legibility Benchmark" -srcfolder dist/dmg -ov -format UDZO ${{ matrix.OUTPUT_NAME }}
+
+    - name: Package for Linux
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get install -y fuse
+        wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+        chmod +x appimagetool-x86_64.AppImage
+        mkdir -p FontLegibilityBenchmark.AppDir/usr/bin
+        mkdir -p FontLegibilityBenchmark.AppDir/usr/share/applications
+        mkdir -p FontLegibilityBenchmark.AppDir/usr/share/icons/hicolor/256x256/apps
+        cp dist/FontLegibilityBenchmark FontLegibilityBenchmark.AppDir/usr/bin/
+        cp FontLegibilityBenchmark.desktop FontLegibilityBenchmark.AppDir/usr/share/applications/
+        cp FontLegibilityBenchmark.png FontLegibilityBenchmark.AppDir/usr/share/icons/hicolor/256x256/apps/
+        ./appimagetool-x86_64.AppImage FontLegibilityBenchmark.AppDir ${{ matrix.OUTPUT_NAME }}
+
+    - name: Package for Windows
+      if: matrix.os == 'windows-latest'
+      run: |
+        mv dist\FontLegibilityBenchmark.exe ${{ matrix.OUTPUT_NAME }}
+
+    - name: Create Release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create ${{ github.ref_name }} \
+          --title "Release ${{ github.ref_name }}" \
+          --notes "Release ${{ github.ref_name }}" \
+          ${{ matrix.OUTPUT_NAME }}
+      shell: bash
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./${{ matrix.OUTPUT_NAME }}
+        asset_name: ${{ matrix.OUTPUT_NAME }}
+        asset_content_type: application/octet-stream
