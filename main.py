@@ -1,6 +1,7 @@
 import os
 import random
 import re
+import sys
 import time
 import tkinter as tk
 import unicodedata
@@ -16,10 +17,21 @@ current_word_index = 0
 max_blur = 6.0
 
 
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+
 def load_text():
     global text_cache
     if text_cache is None:
-        with open('Pride_and_Prejudice.txt', 'r', encoding="utf-8") as file:
+        with open(resource_path('Pride_and_Prejudice.txt'), 'r', encoding='utf-8') as file:
             text_cache = file.read()
     sentences = re.split(r'(?<=[.!?]) +', text_cache)
     return [sentence.split() for sentence in sentences if len(sentence.split()) >= 3]
