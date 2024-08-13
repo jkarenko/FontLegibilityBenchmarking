@@ -6,8 +6,28 @@ on:
       - 'v*'
 
 jobs:
-  build-and-release:
-    name: Build and Release
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+
+  build-and-upload:
+    name: Build and Upload Asset
+    needs: create-release
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
@@ -23,7 +43,7 @@ jobs:
             OUTPUT_NAME: FontLegibilityBenchmark.exe
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Set up Python
       uses: actions/setup-python@v2
@@ -119,12 +139,12 @@ jobs:
       run: |
         mv dist\FontLegibilityBenchmark.exe ${{ matrix.OUTPUT_NAME }}
 
-    - name: Create Release and Upload Asset
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        gh release create ${{ github.ref_name }} \
-          --title "Release ${{ github.ref_name }}" \
-          --notes "Release ${{ github.ref_name }}" \
-          ${{ matrix.OUTPUT_NAME }}
-      shell: bash
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./${{ matrix.OUTPUT_NAME }}
+        asset_name: ${{ matrix.OUTPUT_NAME }}
+        asset_content_type: application/octet-stream
