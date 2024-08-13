@@ -91,17 +91,17 @@ jobs:
       shell: bash
 
     - name: Create .desktop file for Linux
-          if: matrix.os == 'ubuntu-latest'
-          run: |
-            cat > FontLegibilityBenchmark.desktop << EOL
-            [Desktop Entry]
-            Type=Application
-            Name=Font Legibility Benchmark
-            Exec=FontLegibilityBenchmark
-            Icon=FontLegibilityBenchmark
-            Categories=Utility;
-            EOL
-          shell: bash
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cat > FontLegibilityBenchmark.desktop << EOL
+        [Desktop Entry]
+        Type=Application
+        Name=Font Legibility Benchmark
+        Exec=FontLegibilityBenchmark
+        Icon=FontLegibilityBenchmark
+        Categories=Utility;
+        EOL
+      shell: bash
 
     - name: Build with PyInstaller
       run: |
@@ -121,7 +121,7 @@ jobs:
         mv dist/FontLegibilityBenchmark.app dist/dmg/
         hdiutil create -volname "Font Legibility Benchmark" -srcfolder dist/dmg -ov -format UDZO ${{ matrix.OUTPUT_NAME }}
 
-- name: Package for Linux
+    - name: Package for Linux
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get install -y fuse
