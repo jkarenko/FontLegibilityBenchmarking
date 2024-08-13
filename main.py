@@ -5,13 +5,12 @@ import tkinter as tk
 
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageTk
 
+text_cache = None
 
-def update_blur(value):
+
+def update_blur():
     global current_text, frozen_text, frozen_blur_levels
     generate_image()
-
-
-text_cache = None
 
 
 def random_text(length=3):
@@ -162,7 +161,8 @@ frozen_text = {}
 frozen_fonts = {}
 frozen_blur_levels = {}
 
-slider = tk.Scale(root, resolution=0.1, from_=0.0, to=5.0, orient="horizontal", label="Adjust blur with ← →, generate new text with ␣",
+slider = tk.Scale(root, resolution=0.1, from_=0.0, to=5.0, orient="horizontal",
+                  label="Adjust blur with ← →, generate new text with ␣",
                   length=400, command=update_blur)
 slider.set(5.0)
 slider.pack(pady=(0, 10))
