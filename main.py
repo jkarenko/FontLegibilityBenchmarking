@@ -10,13 +10,6 @@ def update_blur(value):
     generate_image()
 
 
-def decrease_blur():
-    current_value = slider.get()
-    if current_value > 0:
-        slider.set(current_value - 1)
-        generate_image()
-
-
 text_cache = None
 
 
@@ -35,7 +28,7 @@ def random_text(length=3):
 
 
 def generate_image():
-    global image, tk_image, image_container, current_text, frozen_text, frozen_blur_levels, slider
+    global image, image_container, current_text, frozen_text, frozen_blur_levels, slider
     draw = ImageDraw.Draw(image)
     image.paste("white", [0, 0, image_width, image_height])  # Clear previous text
 
@@ -89,7 +82,6 @@ def reveal_font(event):
         generate_image()
 
 
-# Create an image with different fonts
 fonts = [
     "/Library/Fonts/Arial.ttf",
     "/Library/Fonts/Helvetica.ttc",
@@ -98,8 +90,6 @@ fonts = [
     "/Library/Fonts/Comic Sans MS.ttf"
 ]
 
-
-# Setup tkinter window
 root = tk.Tk()
 root.title("Font Legibility Evaluation")
 
@@ -111,22 +101,15 @@ canvas = tk.Canvas(root, width=image_width, height=image_height)
 canvas.pack()
 canvas.bind("<Button-1>", reveal_font)
 
-# Initialize variables
 image_container = None
 current_text = {}
 frozen_text = {}
 frozen_blur_levels = {}
 
-# Blur slider set to max 10
 slider = tk.Scale(root, resolution=0.1, from_=0.0, to=5.0, orient="horizontal", label="Blur", command=update_blur)
 slider.set(10.0)
-slider.pack()
+slider.pack(pady=(0, 10))
 
-# Clarify button
-clarify_button = tk.Button(root, text="Clarify", command=decrease_blur)
-clarify_button.pack()
-
-# Initial generation of image
 generate_image()
 
 root.mainloop()
