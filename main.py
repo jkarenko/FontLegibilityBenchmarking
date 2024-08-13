@@ -1,3 +1,4 @@
+import os
 import random
 import re
 import tkinter as tk
@@ -34,12 +35,12 @@ def draw_checkmark(image, x, y, size=20):
 
 
 def generate_image():
-    global image, image_container, current_text, frozen_text, frozen_blur_levels, slider
-    draw = ImageDraw.Draw(image)
+    global image, image_container, current_text, frozen_text, frozen_blur_levels, slider, fonts, frozen_fonts
     image.paste("white", [0, 0, image_width, image_height])  # Clear previous text
 
     y_position = 10
-    for index, font_path in enumerate(fonts):
+    for index in range(5):  # Always generate 5 text lines
+        font_path = frozen_fonts.get(index, fonts[index])
         try:
             font = ImageFont.truetype(font_path, 20)
         except IOError:
@@ -79,13 +80,14 @@ def generate_image():
 
 
 def reveal_font(event):
-    global current_text, frozen_text, frozen_blur_levels
+    global current_text, frozen_text, frozen_blur_levels, frozen_fonts
     y_click = event.y
     index = y_click // 100
-    if 0 <= index < len(fonts):
+    if 0 <= index < 5:  # Changed to 5 to match the number of text lines
         if index not in frozen_text:  # Only freeze if not already frozen
             frozen_text[index] = current_text[index]
             frozen_blur_levels[index] = slider.get()  # Freeze the current blur level
+            frozen_fonts[index] = fonts[index]  # Freeze the current font
             update_frozen_info()
             generate_image()
 
@@ -93,7 +95,7 @@ def reveal_font(event):
 def update_frozen_info():
     frozen_info.delete(1.0, tk.END)  # Clear previous content
     for index, text in frozen_text.items():
-        font_name = fonts[index].split('/')[-1].split('.')[0]  # Extract font name from path
+        font_name = os.path.basename(frozen_fonts[index]).split('.')[0]  # Extract font name from path
         blur_level = frozen_blur_levels[index]
         frozen_info.insert(tk.END, f"Font: {font_name}, Blur: {blur_level:.1f}\n")
 
@@ -103,6 +105,21 @@ def keypress(event):
         slider.set(slider.get() - 0.1)
     elif event.keysym == 'Right':
         slider.set(slider.get() + 0.1)
+    elif event.keysym == 'space':
+        generate_image()
+
+
+def get_font_files(directory):
+    font_extensions = ('.ttf', '.otf', '.ttc')
+    return [os.path.join(directory, f) for f in os.listdir(directory)
+            if f.lower().endswith(font_extensions)]
+
+
+def select_random_fonts():
+    global fonts
+    all_fonts = get_font_files('/Library/Fonts/')
+    fonts = random.sample(all_fonts, 5)
+    generate_image()
 
 
 fonts = [
@@ -117,9 +134,10 @@ root = tk.Tk()
 root.title("Font Legibility Evaluation")
 root.bind("<Left>", keypress)
 root.bind("<Right>", keypress)
+root.bind("<space>", keypress)
 
 image_width = root.winfo_screenwidth()
-image_height = len(fonts) * 100 + 20
+image_height = 5 * 100 + 20  # Changed to always have 5 text lines
 image = Image.new("RGB", (image_width, image_height), color="white")
 
 canvas = tk.Canvas(root, width=image_width, height=image_height)
@@ -129,6 +147,7 @@ canvas.bind("<Button-1>", reveal_font)
 image_container = None
 current_text = {}
 frozen_text = {}
+frozen_fonts = {}
 frozen_blur_levels = {}
 
 slider = tk.Scale(root, resolution=0.1, from_=0.0, to=5.0, orient="horizontal", label="Blur", command=update_blur)
@@ -138,6 +157,10 @@ slider.pack(pady=(0, 10))
 # Add a text widget to display frozen text information
 frozen_info = tk.Text(root, height=5, width=40)
 frozen_info.pack(pady=(0, 10))
+
+# Add a button to select random fonts
+random_fonts_button = tk.Button(root, text="Select Random Fonts", command=select_random_fonts)
+random_fonts_button.pack(pady=(0, 10))
 
 generate_image()
 
