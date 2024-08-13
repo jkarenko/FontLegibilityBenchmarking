@@ -7,7 +7,6 @@ import unicodedata
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageTk
-from numpy.f2py.crackfortran import previous_context
 
 text_cache = None
 collected_fonts = []
@@ -92,14 +91,16 @@ def test_font(font_path, size=30):
     return True
 
 
-def get_font_files(directory):
-    print(f"Searching for fonts in: {directory}")
-    font_extensions = ('.ttf', '.otf', '.ttc')
-    all_fonts = [os.path.join(directory, f) for f in os.listdir(directory)
-                 if f.lower().endswith(font_extensions)]
-    print(f"Total fonts found: {len(all_fonts)}")
-    working_fonts = [font for font in all_fonts if test_font(font)]
-    print(f"Working fonts: {len(working_fonts)}")
+def get_font_files(directories):
+    working_fonts = []
+    for directory in directories:
+        print(f"Searching for fonts in: {directory}")
+        font_extensions = ('.ttf', '.otf', '.ttc')
+        all_fonts = [os.path.join(directory, f) for f in os.listdir(directory)
+                     if f.lower().endswith(font_extensions)]
+        print(f"Total fonts found: {len(all_fonts)}")
+        working_fonts.extend([font for font in all_fonts if test_font(font)])
+        print(f"Working fonts: {len(working_fonts)}")
     return working_fonts
 
 
@@ -237,7 +238,10 @@ collected_fonts_text.pack(pady=(0, 10))
 reset_button = tk.Button(root, text="Reset Collection", command=reset_all)
 reset_button.pack(pady=(0, 10))
 
-fonts = get_font_files('/System/Library/Fonts/')
+# Get user directory
+user_dir = os.path.expanduser('~')
+print(f"User directory: {user_dir}")
+fonts = get_font_files(['/System/Library/Fonts', '/System/Library/Fonts/Supplemental', f'{user_dir}/Library/Fonts'])
 print(f"Final list of fonts: {fonts}")
 current_font = random.choice(fonts) if fonts else None
 if current_font is None:
