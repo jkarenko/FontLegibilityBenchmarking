@@ -122,6 +122,18 @@ def select_random_fonts():
     generate_image()
 
 
+def reset_all():
+    global fonts, current_text, frozen_text, frozen_blur_levels, frozen_fonts, slider
+    select_random_fonts()
+    current_text = {}
+    frozen_text = {}
+    frozen_blur_levels = {}
+    frozen_fonts = {}
+    update_frozen_info()
+    slider.set(5.0)
+    generate_image()
+
+
 fonts = [
     "/Library/Fonts/Arial.ttf",
     "/Library/Fonts/Helvetica.ttc",
@@ -150,16 +162,17 @@ frozen_text = {}
 frozen_fonts = {}
 frozen_blur_levels = {}
 
-slider = tk.Scale(root, resolution=0.1, from_=0.0, to=5.0, orient="horizontal", label="Blur", command=update_blur)
+slider = tk.Scale(root, resolution=0.1, from_=0.0, to=5.0, orient="horizontal", label="Adjust blur with ← →, generate new text with ␣",
+                  length=400, command=update_blur)
 slider.set(5.0)
 slider.pack(pady=(0, 10))
 
 # Add a text widget to display frozen text information
-frozen_info = tk.Text(root, height=5, width=40)
+frozen_info = tk.Text(root, height=5, width=60)
 frozen_info.pack(pady=(0, 10))
 
 # Add a button to select random fonts
-random_fonts_button = tk.Button(root, text="Select Random Fonts", command=select_random_fonts)
+random_fonts_button = tk.Button(root, text="Restart With Random Fonts", command=reset_all)
 random_fonts_button.pack(pady=(0, 10))
 
 generate_image()
