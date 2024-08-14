@@ -92,7 +92,6 @@ jobs:
   build-and-upload:
     name: Build and Upload Asset
     needs: [determine-build-type, create-release]
-    if: needs.determine-build-type.outputs.should-build == 'true'
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
@@ -186,7 +185,9 @@ jobs:
       run: |
         mkdir -p dist/dmg
         mv dist/${{ github.event.repository.name }}.app dist/dmg/
-        hdiutil create -volname "Font Legibility Benchmark" -srcfolder dist/dmg -ov -format UDZO ${{ matrix.OUTPUT_NAME }}
+        hdiutil create -volname "Font Legibility Benchmark" -srcfolder dist/dmg -ov -format UDZO "${{ env.OUTPUT_NAME }}"
+      env:
+        OUTPUT_NAME: ${{ github.event.repository.name }}-${{ needs.determine-build-type.outputs.build-type }}.dmg
 
     - name: Package for Linux
       if: matrix.os == 'ubuntu-latest'
@@ -202,13 +203,14 @@ jobs:
         cp ${{ github.event.repository.name }}.desktop ${{ github.event.repository.name }}.AppDir/usr/share/applications/
         cp ${{ github.event.repository.name }}.png ${{ github.event.repository.name }}.AppDir/usr/share/icons/hicolor/256x256/apps/
         cp ${{ github.event.repository.name }}.png ${{ github.event.repository.name }}.AppDir/
-        ./appimagetool-x86_64.AppImage ${{ github.event.repository.name }}.AppDir ${{ matrix.OUTPUT_NAME }}
+        ./appimagetool-x86_64.AppImage ${{ github.event.repository.name }}.AppDir "${{ env.OUTPUT_NAME }}"
       shell: bash
 
     - name: Package for Windows
       if: matrix.os == 'windows-latest'
       run: |
-        mv dist\${{ github.event.repository.name }}.exe ${{ matrix.OUTPUT_NAME }}
+        mv dist\${{ github.event.repository.name }}.exe "${{ env.OUTPUT_NAME }}"
+      shell: bash
 
     - name: Upload Release Asset
       uses: actions/upload-release-asset@v1
