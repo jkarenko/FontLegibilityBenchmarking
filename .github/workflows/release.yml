@@ -11,7 +11,7 @@ on:
     - cron: '0 0 * * *'  # UTC midnight
   workflow_dispatch:
     inputs:
-      release-type:
+      release_type:
         description: 'Type of release to create'
         required: true
         default: 'test'
