@@ -2,12 +2,37 @@ name: Build and Release
 
 on:
   push:
+    branches:
+      - main
+      - master
     tags:
       - 'v*'
+  schedule:
+    - cron: '0 0 * * *'  # UTC midnight
 
 jobs:
+  determine-build-type:
+    runs-on: ubuntu-latest
+    outputs:
+      build-type: ${{ steps.set-build-type.outputs.build-type }}
+      release-name: ${{ steps.set-build-type.outputs.release-name }}
+    steps:
+    - name: Determine build type and release name
+      id: set-build-type
+      run: |
+        if [[ "${{ github.ref }}" == "refs/tags/v"* ]]; then
+          echo "build-type=release" >> $GITHUB_OUTPUT
+          echo "release-name=Release ${{ github.ref_name }}" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.event_name }}" == "schedule" ]]; then
+          echo "build-type=nightly" >> $GITHUB_OUTPUT
+          echo "release-name=Nightly Build $(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+        else
+          echo "build-type=development" >> $GITHUB_OUTPUT
+          echo "release-name=Development Build $(date +'%Y-%m-%d-%H%M%S')" >> $GITHUB_OUTPUT
+        fi
+
   create-release:
-    name: Create Release
+    needs: determine-build-type
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -20,14 +45,14 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
+        tag_name: ${{ github.ref_name }}
+        release_name: ${{ needs.determine-build-type.outputs.release-name }}
         draft: false
-        prerelease: false
+        prerelease: ${{ needs.determine-build-type.outputs.build-type != 'release' }}
 
   build-and-upload:
     name: Build and Upload Asset
-    needs: create-release
+    needs: [determine-build-type, create-release]
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
@@ -42,7 +67,7 @@ jobs:
           - os: windows-latest
             extension: exe
     env:
-      OUTPUT_NAME: ${{ github.event.repository.name }}.${{ matrix.extension }}
+      OUTPUT_NAME: ${{ github.event.repository.name }}-${{ needs.determine-build-type.outputs.build-type }}.${{ matrix.extension }}
 
     steps:
     - uses: actions/checkout@v3
@@ -84,23 +109,23 @@ jobs:
           sips -z 512 512   icon_1024x1024.png --out MyIcon.iconset/icon_512x512.png
           cp icon_1024x1024.png MyIcon.iconset/icon_512x512@2x.png
           iconutil -c icns MyIcon.iconset
-          mv MyIcon.icns FontLegibilityBenchmark.icns
+          mv MyIcon.icns ${{ github.event.repository.name }}.icns
         elif [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
-          convert icon_1024x1024.png -resize 256x256 FontLegibilityBenchmark.png
+          convert icon_1024x1024.png -resize 256x256 ${{ github.event.repository.name }}.png
         elif [ "${{ matrix.os }}" = "windows-latest" ]; then
-          magick convert icon_1024x1024.png -define icon:auto-resize=256,128,64,48,32,16 FontLegibilityBenchmark.ico
+          magick convert icon_1024x1024.png -define icon:auto-resize=256,128,64,48,32,16 ${{ github.event.repository.name }}.ico
         fi
       shell: bash
 
     - name: Create .desktop file for Linux
       if: matrix.os == 'ubuntu-latest'
       run: |
-        cat > FontLegibilityBenchmark.desktop << EOL
+        cat > ${{ github.event.repository.name }}.desktop << EOL
         [Desktop Entry]
         Type=Application
         Name=Font Legibility Benchmark
-        Exec=FontLegibilityBenchmark
-        Icon=FontLegibilityBenchmark
+        Exec=${{ github.event.repository.name }}
+        Icon=${{ github.event.repository.name }}
         Categories=Utility;
         EOL
       shell: bash
@@ -108,11 +133,11 @@ jobs:
     - name: Build with PyInstaller
       run: |
         if [ "${{ matrix.os }}" = "macos-latest" ]; then
-          pyinstaller --onefile --windowed --icon=FontLegibilityBenchmark.icns --name FontLegibilityBenchmark main.py
+          pyinstaller --onefile --windowed --icon=${{ github.event.repository.name }}.icns --name ${{ github.event.repository.name }} main.py
         elif [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
-          pyinstaller --onefile --windowed --icon=FontLegibilityBenchmark.png --name FontLegibilityBenchmark --add-data "FontLegibilityBenchmark.desktop:." --add-data "FontLegibilityBenchmark.png:." main.py
+          pyinstaller --onefile --windowed --icon=${{ github.event.repository.name }}.png --name ${{ github.event.repository.name }} --add-data "${{ github.event.repository.name }}.desktop:." --add-data "${{ github.event.repository.name }}.png:." main.py
         elif [ "${{ matrix.os }}" = "windows-latest" ]; then
-          pyinstaller --onefile --windowed --icon=FontLegibilityBenchmark.ico --name FontLegibilityBenchmark main.py
+          pyinstaller --onefile --windowed --icon=${{ github.event.repository.name }}.ico --name ${{ github.event.repository.name }} main.py
         fi
       shell: bash
 
@@ -120,7 +145,7 @@ jobs:
       if: matrix.os == 'macos-latest'
       run: |
         mkdir -p dist/dmg
-        mv dist/FontLegibilityBenchmark.app dist/dmg/
+        mv dist/${{ github.event.repository.name }}.app dist/dmg/
         hdiutil create -volname "Font Legibility Benchmark" -srcfolder dist/dmg -ov -format UDZO ${{ matrix.OUTPUT_NAME }}
 
     - name: Package for Linux
@@ -129,21 +154,21 @@ jobs:
         sudo apt-get install -y fuse
         wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
         chmod +x appimagetool-x86_64.AppImage
-        mkdir -p FontLegibilityBenchmark.AppDir/usr/bin
-        mkdir -p FontLegibilityBenchmark.AppDir/usr/share/applications
-        mkdir -p FontLegibilityBenchmark.AppDir/usr/share/icons/hicolor/256x256/apps
-        cp dist/FontLegibilityBenchmark FontLegibilityBenchmark.AppDir/usr/bin/
-        cp FontLegibilityBenchmark.desktop FontLegibilityBenchmark.AppDir/
-        cp FontLegibilityBenchmark.desktop FontLegibilityBenchmark.AppDir/usr/share/applications/
-        cp FontLegibilityBenchmark.png FontLegibilityBenchmark.AppDir/usr/share/icons/hicolor/256x256/apps/
-        cp FontLegibilityBenchmark.png FontLegibilityBenchmark.AppDir/
-        ./appimagetool-x86_64.AppImage FontLegibilityBenchmark.AppDir ${{ matrix.OUTPUT_NAME }}
+        mkdir -p ${{ github.event.repository.name }}.AppDir/usr/bin
+        mkdir -p ${{ github.event.repository.name }}.AppDir/usr/share/applications
+        mkdir -p ${{ github.event.repository.name }}.AppDir/usr/share/icons/hicolor/256x256/apps
+        cp dist/${{ github.event.repository.name }} ${{ github.event.repository.name }}.AppDir/usr/bin/
+        cp ${{ github.event.repository.name }}.desktop ${{ github.event.repository.name }}.AppDir/
+        cp ${{ github.event.repository.name }}.desktop ${{ github.event.repository.name }}.AppDir/usr/share/applications/
+        cp ${{ github.event.repository.name }}.png ${{ github.event.repository.name }}.AppDir/usr/share/icons/hicolor/256x256/apps/
+        cp ${{ github.event.repository.name }}.png ${{ github.event.repository.name }}.AppDir/
+        ./appimagetool-x86_64.AppImage ${{ github.event.repository.name }}.AppDir ${{ matrix.OUTPUT_NAME }}
       shell: bash
 
     - name: Package for Windows
       if: matrix.os == 'windows-latest'
       run: |
-        mv dist\FontLegibilityBenchmark.exe ${{ matrix.OUTPUT_NAME }}
+        mv dist\${{ github.event.repository.name }}.exe ${{ matrix.OUTPUT_NAME }}
 
     - name: Upload Release Asset
       uses: actions/upload-release-asset@v1
@@ -151,6 +176,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./${{ matrix.OUTPUT_NAME }}
-        asset_name: ${{ matrix.OUTPUT_NAME }}
+        asset_path: ./${{ env.OUTPUT_NAME }}
+        asset_name: ${{ env.OUTPUT_NAME }}
         asset_content_type: application/octet-stream
