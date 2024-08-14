@@ -209,7 +209,16 @@ jobs:
     - name: Package for Windows
       if: matrix.os == 'windows-latest'
       run: |
-        mv dist\${{ github.event.repository.name }}.exe "${{ env.OUTPUT_NAME }}"
+        ls dist
+        if [ -f "dist/${{ github.event.repository.name }}.exe" ]; then
+          mv "dist/${{ github.event.repository.name }}.exe" "${{ env.OUTPUT_NAME }}"
+          echo "Successfully moved the executable"
+        else
+          echo "File not found: dist/${{ github.event.repository.name }}.exe"
+          echo "Contents of dist directory:"
+          ls dist
+          exit 1
+        fi
       shell: bash
 
     - name: Upload Release Asset
