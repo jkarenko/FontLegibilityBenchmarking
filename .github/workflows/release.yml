@@ -9,6 +9,17 @@ on:
       - 'v*'
   schedule:
     - cron: '0 0 * * *'  # UTC midnight
+  workflow_distpatch:
+    inputs:
+      release-type:
+        description: 'Type of release to create'
+        required: true
+        default: 'test'
+        type: choice
+        options:
+          - 'test'
+          - 'nightly'
+          - 'release'
 
 jobs:
   determine-build-type:
@@ -21,7 +32,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
       with:
-        fetch-depth: 0  # Fetches all history for all branches and tags
+        fetch-depth: 0
 
     - name: Check for changes
       id: check-changes
@@ -31,14 +42,11 @@ jobs:
           LAST_COMMIT=$(git log -1 --format=%ct)
           LAST_DAY=$(date -d "yesterday" +%s)
           if [[ $LAST_COMMIT -gt $LAST_DAY ]]; then
-            echo "Changes detected, should build"
             echo "should-build=true" >> $GITHUB_OUTPUT
           else
-            echo "No changes, skipping build"
             echo "should-build=false" >> $GITHUB_OUTPUT
           fi
         else
-          echo "Not a scheduled build, should proceed"
           echo "should-build=true" >> $GITHUB_OUTPUT
         fi
 
@@ -46,7 +54,10 @@ jobs:
       id: set-build-type
       if: steps.check-changes.outputs.should-build == 'true'
       run: |
-        if [[ "${{ github.ref }}" == "refs/tags/v"* ]]; then
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          echo "build-type=manual-${{ github.event.inputs.release_type }}" >> $GITHUB_OUTPUT
+          echo "release-name=Manual ${{ github.event.inputs.release_type }} Build $(date +'%Y-%m-%d-%H%M%S')" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.ref }}" == "refs/tags/v"* ]]; then
           echo "build-type=release" >> $GITHUB_OUTPUT
           echo "release-name=Release ${{ github.ref_name }}" >> $GITHUB_OUTPUT
         elif [[ "${{ github.event_name }}" == "schedule" ]]; then
