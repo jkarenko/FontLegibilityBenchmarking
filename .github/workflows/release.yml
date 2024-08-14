@@ -36,11 +36,13 @@ jobs:
         os: [macos-latest, ubuntu-latest, windows-latest]
         include:
           - os: macos-latest
-            OUTPUT_NAME: FontLegibilityBenchmark.dmg
+            extension: dmg
           - os: ubuntu-latest
-            OUTPUT_NAME: FontLegibilityBenchmark.AppImage
+            extension: AppImage
           - os: windows-latest
-            OUTPUT_NAME: FontLegibilityBenchmark.exe
+            extension: exe
+    env:
+      OUTPUT_NAME: ${{ github.event.repository.name }}.${{ matrix.extension }}
 
     steps:
     - uses: actions/checkout@v3
