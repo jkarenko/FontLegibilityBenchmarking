@@ -9,7 +9,7 @@ on:
       - 'v*'
   schedule:
     - cron: '0 0 * * *'  # UTC midnight
-  workflow_distpatch:
+  workflow_dispatch:
     inputs:
       release-type:
         description: 'Type of release to create'
